@@ -1,0 +1,346 @@
+P2 Test Toolbox V1.5
+By Ozpropdev 2014
+--------------------
+
+To start Toolbox press "*".
+
+Toolbox displays the following format response.
+
+
+P2 Test Toolbox V1.4
+
+Before:  Pass #0  Log: ON=24 Dump:LONG
+Instruction: %1010010_00_0_1111_000000100_000000011 $004,$003 4,3
+Flags: Z=1 C=0
+D=$4242_4242  %0100_0010_0100_0010_0100_0010_0100_0010  1111638594
+S=$0000_0042  %0000_0000_0000_0000_0000_0000_0100_0010  66
+
+
+The first line shows the pass number, logger status/index and dump output mode. 
+The second line shows the instruction coding followed by the hex D/S values and decimal D/S values.
+The third line show the current Z and C flag status.
+The fourth line shows the D register value in hex,binary,unsigned decimal and signed decimal.
+The fifth line shows the S register value in hex,binary,unsigned decimal and signed decimal.
+
+
+Commands:
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+?	HELP display
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+$	Hex entry mode
+%	Binary entry mode
+<enter>	Same as =
+
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+S	SOURCE register (s_reg)
+
+e.g	S+	Increment s_reg
+	S-	Decrement s_reg 
+	S=	s_reg = 0
+	S5+	s_reg += 5
+	S6-	s_reg -=6
+	S13=	s_reg = 13 (decimal)
+	S$2f=	s_reg = $27 (hex)
+	S%1011=	s_reg = %1911 (binary)
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+T	DEST register (d_reg)
+
+e.g.	T+	Increment d_reg
+	T-	Decrement d_reg
+	T=	d_reg = 0
+	T3+	d_reg += 3
+	T2-	d_reg -= 2
+	T100=	d_reg = 100 (decimal)
+	T$fa	d_reg =$fa (hex)
+	T%110	d+reg = %110 (binary)
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+I	Immediate
+
+e.g.	I+	Set immmediate flag
+	I-	Clears immediate flag + restores opcode to s_reg
+	I23=	Immediate value = 23 (decimal) + set immediate flag
+	I%ee	Immediate value = $ee (hex) + set immediate flag
+	I%1010	Immediate value = %1010 (binary) + set immediate flag
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Z	ZERO flag
+
+e.g.	Z+	Set ZERO flag
+	Z-	Clear ZERO flag
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Y	CARRY	flag
+
+e.g.	Y+	Set CARRY flag
+	Y-	Clear CARRY flag
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+X	EXECUTE test instruction
+
+e.g.	X=	Execite instruction and show "after" result	
+	X5=	Execute instruction 5 times
+
+	Note: Each time instruction is executed the Pass counter is incremented.
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+O	Execute Once wirh before/after headers.
+
+	Same as X= but display before and after result.
+
+Sample output:
+
+>O
+P2 Test Toolbox V1.5
+
+Before:  Pass #0  Log: OFF=0 Dump:LONG
+Instruction: %1010010_00_0_1111_000000100_000000011 $004,$003 4,3
+Flags: Z=0 C=0
+D=$0000_000D  %0000_0000_0000_0000_0000_0000_0000_1101  13
+S=$1122_4488  %0001_0001_0010_0010_0100_0100_1000_1000  287458440
+
+
+After:   Pass #1  Log: OFF=0 Dump:LONG
+Instruction: %1010010_00_0_1111_000000100_000000011 $004,$003 4,3
+Flags: Z=1 C=0
+D=$8888_8888  %1000_1000_1000_1000_1000_1000_1000_1000  2290649224  -204318072
+S=$1122_4488  %0001_0001_0010_0010_0100_0100_1000_1000  287458440
+
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+N	Show before header and reset pass counter.
+
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+R	REFRESH display
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+J	Change dumo hub memory mode
+
+e.g.	J+	Change to next dump mode
+	J-	Change to previous dump mode
+	J0=	Change to BYTE dump mode
+	J1=	Change to WORD dump mode
+	J2=	Change to LONG dump mode
+	J3=	Change to TEXT dump mode
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+H	Dump Hub memory in current dump mode
+
+e.g.	H0,FF	Dump hub memory from $0 to %FF
+
+	Note: Defaults to hex address entry mode
+	Press <esc> to abort
+
+Sample outputs:
+
+>H0,3F
+00000: 50 72 6F 70 32 2E 30 20 80 02 7C FE 81 00 7C FE 
+00010: C5 3F C0 FA FA E2 7C 40 00 BC BC FE 00 BC BC FE 
+00020: 01 BC 7C 50 1F BC 7C B5 01 D2 7C 38 2C 0C 28 FE 
+00030: 00 BA BC FE 26 D0 7C EE 1A 00 FD FC 75 EC 3C 40 
+
+
+>H0,3F
+00000: 7250  706F  2E32  2030  0280  FE7C  0081  FE7C  
+00010: 3FC5  FAC0  E2FA  407C  BC00  FEBC  BC00  FEBC  
+00020: BC01  507C  BC1F  B57C  D201  387C  0C2C  FE28  
+00030: BA00  FEBC  D026  EE7C  001A  FCFD  EC75  403C  
+
+>H0,3F
+00000: 706F_7250  2030_2E32  FE7C_0280  FE7C_0081  
+00010: FAC0_3FC5  407C_E2FA  FEBC_BC00  FEBC_BC00  
+00020: 507C_BC01  B57C_BC1F  387C_D201  FE28_0C2C  
+00030: FEBC_BA00  EE7C_D026  FCFD_001A  403C_EC75  
+
+>H0,7F
+00000: Prop2.0 ..|...|..?....|@........
+00020: ..|P..|...|8,.(.....&.|.....u.<@
+00040: ....u.<P..|4......|...........|:
+00060: ..|...|@..|...h@..|.......|.....
+
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+G	DUMP Cog memory
+
+e.g.	G3,7	Dump cog memory from $3 to $7
+
+	Note: Defaults to hex address entry mode
+
+
+?G4,7
+Cog Ram $004:= $F3FC0816 %1111001_11_1_1111_000000100_000010110 4093380630
+Cog Ram $005:= $FB800004 %1111101_11_0_0000_000000000_000000100 4219469828
+Cog Ram $006:= $FE7E0893 %1111111_00_1_1111_100000100_010010011 4269672595
+Cog Ram $007:= $FE7C00A1 %1111111_00_1_1111_000000000_010100001 4269539489
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+M	Run macro
+
+	Runs the preloaded "macro" command
+
+
+	Note: See source code for location.
+
+	macro	byte	"Z+"	'set z flag
+		byte	"S23="	's_reg = 23 (dec)
+		byte	"O"	'execute once with before/after headers
+		byte	0
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+>	Shift register right
+
+e.g.	S>	Shift s_reg right
+	S3>	Shift s_reg right 3 times
+	T>	Shift d_reg right
+	T16>	Shift d_reg right 16 times
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+<	Shift register left
+
+e.g.	S<	Shift s_reg left
+	S7<	Shift s_reg left 7 times
+	T<	Shift d_reg left
+	T2<	Shift d_reg left 2 times
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+[	Left align register
+
+	register is shifted left until bit 31 = 1
+
+e.g.	S[	Left align s_reg
+	T[	Left align d_reg
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+]	Right align register
+
+	Register is shifted right until bit 0 = 1
+
+e.g.	S]	Right align s_reg
+	T]	Right align d_reg
+
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+LOGGER
+=======
+
+	When logger is enabled each execution of the test instrucrion
+	saves the Pass count,Z and C flags and d-reg's current value.
+
+e.g.	L+	Enable logger
+	L-	Disable logger
+	L=	Reset logger index
+
+	V	VIEW logger results
+
+
+LOGGER OUTPUT
+-------------
+
+Pass #18  ZC=00  $0000_0000  %0000_0000_0000_0000_0000_0000_0000_0000  0
+Pass #19  ZC=01  $0000_0001  %0000_0000_0000_0000_0000_0000_0000_0001  1
+Pass #20  ZC=01  $0000_0003  %0000_0000_0000_0000_0000_0000_0000_0011  3
+Pass #21  ZC=00  $0000_0006  %0000_0000_0000_0000_0000_0000_0000_0110  6
+Pass #22  ZC=00  $0000_0012  %0000_0000_0000_0000_0000_0000_0001_0010  18
+Pass #23  ZC=00  $0000_0024  %0000_0000_0000_0000_0000_0000_0010_0100  36
+Pass #24  ZC=00  $0000_0048  %0000_0000_0000_0000_0000_0000_0100_1000  72
+Pass #25  ZC=00  $0000_0096  %0000_0000_0000_0000_0000_0000_1001_0110  150
+Pass #26  ZC=00  $0000_0192  %0000_0000_0000_0000_0000_0001_1001_0010  402
+Pass #27  ZC=01  $0000_0385  %0000_0000_0000_0000_0000_0011_1000_0101  901
+Pass #28  ZC=01  $0000_0771  %0000_0000_0000_0000_0000_0111_0111_0001  1905
+Pass #29  ZC=01  $0000_1543  %0000_0000_0000_0000_0001_0101_0100_0011  5443
+Pass #30  ZC=00  $0000_3086  %0000_0000_0000_0000_0011_0000_1000_0110  12422
+Pass #31  ZC=00  $0000_6172  %0000_0000_0000_0000_0110_0001_0111_0010  24946
+Pass #32  ZC=01  $0001_2345  %0000_0000_0000_0001_0010_0011_0100_0101  74565
+
+First column is the pass number
+Second column is the Z and C flag status
+Third column is the D registers value in HEX
+Fifth column is D registers value in BINARY
+Sixth column is D registers value in decimal.
+
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+TRACE
+=====
+
+
+W	View trace result
+	Press <esc> to abort.
+
+P	Wipe trace results
+	Fills AUX buffer with zeroes.
+
+
+The trace uses the 16 bit mode. This allows double the sample capacity (512 samples).
+Be aware that the samples will roll over in AUX if more than 512 samples are collected.
+The PINXFR uses PTRY so remember to avoid using it in your test code.
+
+TRACE OUTPUT
+------------
+
+
+R39  TASK0 --- ----- STALL ---- ----  | $00A ---- ---- ---- 
+R40  TASK0 --- ----- STALL ---- ----  | $00A ---- ---- ---- 
+R41  TASK0 --- ----- ----- ---- ----  | $00A ---- ---- ---- 
+R42  TASK0 --- ----- ----- ---- JUMP  | $00B ---- ---- ---- 
+R43  TASK1 --- ----- ----- SKIP ----  | ---- $016 ---- ---- 
+R44  TASK2 --- ----- ----- ---- ----  | ---- ---- $016 ---- 
+R45  TASK0 --- ----- ----- SKIP ----  | $00C ---- ---- ---- 
+R46  TASK1 HUB ----- ----- ---- ----  | ---- $013 ---- ---- 
+R47  TASK0 --- ----- STALL ---- ----  | $00A ---- ---- ---- 
+R48  TASK0 --- ----- STALL ---- ----  | $00A ---- ---- ---- 
+R49  TASK0 --- ----- STALL ---- ----  | $00A ---- ---- ---- 
+R50  TASK0 --- ----- ----- ---- ----  | $00A ---- ---- ---- 
+R51  TASK0 --- ----- ----- ---- JUMP  | $00B ---- ---- ---- 
+R52  TASK1 --- ----- STALL ---- ----  | ---- $014 ---- ---- 
+R53  TASK1 --- ----- STALL ---- ----  | ---- $014 ---- ---- 
+R54  TASK1 HUB ----- ----- ---- ----  | ---- $014 ---- ---- 
+R55  TASK2 --- ----- ----- SKIP ----  | ---- ---- $017 ---- 
+R56  TASK0 --- ----- ----- SKIP ----  | $00C ---- ---- ---- 
+R57  TASK1 --- ----- ----- ---- JUMP  | ---- $015 ---- ---- 
+R58  TASK0 --- ----- STALL ---- ----  | $00A ---- ---- ---- 
+R59  TASK0 --- ----- STALL ---- ----  | $00A ---- ---- ---- 
+R60  TASK0 --- ----- STALL ---- ----  | $00A ---- ---- ---- 
+R61  TASK0 --- ----- ----- ---- ----  | $00A ---- ---- ---- 
+R62  TASK0 HUB ----- ----- ---- ----  | $00B ---- ---- ---- 
+R63  TASK1 --- ----- ----- SKIP ----  | ---- $016 ---- ---- 
+R64  TASK2 --- ----- ----- ---- JUMP  | ---- ---- $018 ---- 
+
+
+The first column is the record number
+The second column is the task number
+The third column is the HUB indicator
+The fourth column is the FEETCH indicator
+The foifth column is the Go indicator (STALL)
+The sixth column is the COND indicator (SKIP)
+The seventh column is the JUMP indicator
+The next 4 columns are the respective PC's of each task.
+
