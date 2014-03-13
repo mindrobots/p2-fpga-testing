@@ -1,0 +1,1311 @@
+'P2 Test Toolbox 'Version 1.5 - Ozpropdev 2014
+
+'*******************************************************************************************
+
+dat			orgh	$e00/4			'F11 ro run in Pnut
+			org
+
+			jmp	@toolbox		'Start Toolbox in Hubexec mode
+
+test_instruction	jmptask	#%0010,#dummy1		'start dummy tasks
+			jmptask	#%1000,#dummy2
+			settask	##%%310010
+
+			setptry	#0
+			setxfr	#%1_110_111,#0	'start trace
+			mov	d_reg,#27
+			mov	s_reg,#$b
+			mov	myreg,#6
+:loop			incpat	d_reg
+			djnz	myreg,@:loop
+
+			nop
+			setxfr	#0,#0		'stop trace
+ 
+			ret
+
+s_reg			long	$11224488
+d_reg			long	13		'Initial dest and source values
+
+myreg			long	0
+myreg2			long	0
+
+dummy1			notp	#32
+			wait	#3		'stall pipeline
+			jmp	#dummy1
+
+dummy2			incmod	myreg2,#3 wc
+		if_c	notp	#33		'conditional instruction
+			jmp	#dummy2
+
+
+'*******************************************************************************************
+
+read_cogram		setd	myinda,val2
+			nop
+			nop
+			nop
+myinda			push	0-0
+			reta
+
+'*******************************************************************************************
+
+cmd			long	0
+val			long	0
+val2			long	0
+zc_flags		long	0
+bin_style		long	0
+hex_style		long	0
+hex_digits		long	0
+bin_digits		long	0
+mode			long	0
+pass			long	0
+log			long	0
+log_index		long	0
+task			long	0
+record			long	0
+macro_mode		long	0
+macro_index		long	0
+_macro_addr		long	@macro
+ptra2			long	0
+ptrb2			long	0
+qreg			long	0
+dump_mode		long	0
+
+_d_buffer		long	@d_buffer
+_title			long	@_title_
+_before			long	@_before_ 
+_after			long	@_after_ 
+_inst			long	@_inst_ 
+_flags			long	@_flags_ 
+_bin_formats		long	@bin_formats 
+_hex_formats		long	@hex_formats 
+_help			long	@help 
+_pass			long	@_pass_ 
+_log			long	@_log_ 
+_off			long	@_off_ 
+_on			long	@_on_ 
+_cogram			long	@_cogram_
+
+_byte			long	@_byte_
+_word			long	@_word_
+_long			long	@_long_
+_dump			long	@_dump_
+_text			long	@_text_
+
+_task			long	@_task_
+_hub			long	@_hub_
+_fetch			long	@_fetch_
+_go			long	@_go_
+_stall			long	@_stall_
+_cond			long	@_cond_
+_skip			long	@_skip_
+_jump			long	@_jump_
+_dash2			long	@_dash2_
+_dash3			long	@_dash3_
+_dash4			long	@_dash4_
+_dash5			long	@_dash5_
+_done			long	@_done_
+
+config			long	%10 << 16 | 91 << 9 | %10 << 7 | 90
+
+key			res	1
+tmp			res	1
+ax			res	1
+bx			res	1
+cx			res	1
+dx			res	1
+ex			res	1
+res1			res	1
+res0			res	1
+repeats			res	1
+'*******************************************************************************************
+con
+
+	#0,c_flag,z_flag
+	#1,dreg,sreg,zflag,cflag,imed,exec,logger,cogram,hubram,dumpmode
+
+dat
+
+			orgh
+
+'' Pre load commands here for  convenience and use "M" to run sequence
+''Terminate with a zero byte
+
+macro			byte	"x="	'execute code snuppet
+			byte	"w"	'show trace results
+			byte	0
+
+toolbox			setsera	config,##80_000_000 / 9600	'setip comms
+			clrp	#90
+
+			setrace	#%1111   'trace on pins 112 to 127
+			setxch	##$01010101
+			mov	dird,##$ffff0000
+			mov	outd,#0
+
+:loop			serina	key			'press "*" to start
+			cmp	key,#"*" wz,wc
+		if_ne	jmp	@:loop
+
+			locptra	@mystack
+
+			push	_title
+			calla	@show_msg
+			calla	@refresh
+
+prompt			serouta	#">"
+			mov	val,#0
+			mov	cmd,#0
+			mov	mode,#0
+			
+wait4key		jz	macro_mode,@w4k
+			rdbyte	key,macro_index wz
+		if_z	mov	macro_mode,#0
+			add	macro_index,#1
+			jmp	@w4k_2
+
+w4k			serina	key
+w4k_2			calla	@ucase
+			serouta	key
+
+			cmp	key,#"J" wz,wc
+		if_e	mov	cmd,#dumpmode
+		
+
+			cmp	key,#"H" wz,wc		'show hub ram
+		if_e	mov	mode,#1  		'switch to hex mode
+		if_e	mov	cmd,#hubram
+		if_e	jmp	@clear
+
+			cmp	key,#"M" wz,wc		'run macro
+		if_e	mov	macro_mode,#1
+		if_e	mov	macro_index,_macro_addr
+
+			cmp	key,#"," wz,wc		'comma
+		if_e	mov	val2,val
+		if_e	mov	val,#0
+
+			cmp	key,#"G" wz,wc		'show cog ram
+		if_e	mov	mode,#1  		'switch to hex mode
+		if_e	mov	cmd,#cogram
+		if_e	jmp	@clear
+
+			cmp	key,#"?" wz,wc		'help
+		if_e	calla	@show_help
+
+			cmp	key,#"R" wz,wc		'refresh
+		if_e	calla	@refresh
+		if_e	jmp	@prompt
+
+			cmp	key,#"T" wz,wc		'dest reg
+		if_e	mov	cmd,#dreg
+		if_e	jmp	@clear
+
+			cmp	key,#"S" wz,wc		'source reg
+		if_e	mov	cmd,#sreg
+		if_e	jmp	@clear
+
+			cmp	key,#"Z" wz,wc		'zero flag
+		if_e	mov	cmd,#zflag
+		if_e	jmp	@clear
+
+			cmp	key,#"Y" wz,wc		'carry 		flag
+		if_e	mov	cmd,#cflag
+		if_e	jmp	@clear
+
+			cmp	key,#"I" wz,wc		'immediate
+		if_e	mov	cmd,#imed
+		if_e	jmp	@clear
+
+			cmp	key,#"+" wz,wc		'increment
+		if_e	jmp	@inc
+
+			cmp	key,#"-" wz,wc		'decrement
+		if_e	jmp	@dec
+
+			cmp	key,#"=" wz,wc		'load
+		if_e	jmp	@load
+			cmp	key,#13 wz,wc		'load
+		if_e	jmp	@load
+
+			cmp	key,#"$" wz,wc		'hex mode
+		if_e	mov	mode,#1
+		if_e	jmp	@clear
+
+			cmp	key,#"%" wz,wc		'binary mode
+		if_e	mov	mode,#2
+		if_e	jmp	@clear
+
+			cmp	key,#"X" wz,wc		'execute 1 or multiple times
+		if_e	mov	cmd,#exec
+		if_e	jmp	@clear
+
+			cmp	key,#"O" wz,wc		'execute once
+		if_e	calla	@before
+		if_e	calla	@execute
+		if_e	jmp	@prompt
+
+			cmp	key,#"N" wz,wc		'header
+		if_e	calla	@before
+		if_e	jmp	@prompt
+
+			cmp	key,#"L" wz,wc		'logger
+		if_e	mov	cmd,#logger
+		if_e	jmp	@clear
+
+			cmp	key,#"V" wz,wc		'view log
+		if_e	jmp	@view_log
+
+			cmp	key,#"[" wz,wc		'left align
+		if_e	jmp	@left_align
+
+			cmp	key,#"]" wz,wc		'right align
+		if_e	jmp	@right_align
+
+			cmp	key,#">" wz,wc		'shift right
+		if_e	jmp	@right_shift
+
+			cmp	key,#"<" wz,wc		'shift_left
+		if_e	jmp	@left_shift
+
+
+			cmp	key,#"W" wz,wc		'show trace
+		if_e	jmp	@show_trace
+
+			cmp	key,#"P" wz,wc		'wipe trace
+		if_e	jmp	@wipe_trace
+
+			jmplist	mode,@modelist
+modelist		jmp	@dec_entry
+			jmp	@hex_entry
+			jmp	@bin_entry
+
+dec_entry		cmp	key,#"0" wz,wc
+		if_b	jmp	@wait4key
+			cmp	key,#"9" wz,wc
+		if_a	jmp	@wait4key
+			sub	key,#"0"
+			mov	tmp,val
+			shl	val,#3
+			add	val,tmp
+			add	val,tmp
+			add	val,key
+			jmp	@wait4key
+
+hex_entry		cmp	key,#"0" wz,wc
+		if_b	jmp	@wait4key
+			cmp	key,#"9" wz,wc
+		if_be	sub	key,#"0"
+		if_be	jmp	@:loop
+			cmp	key,#"A" wz,wc
+		if_b	jmp	@wait4key
+			cmp	key,#"F" wz,wc
+		if_a	jmp	@wait4key
+			sub	key,#"A"-10
+:loop			shl	val,#4
+			add	val,key
+			jmp	@wait4key
+
+bin_entry		cmp	key,#"0" wz,wc
+		if_b	jmp	@wait4key
+			cmp	key,#"1" wz,wc
+		if_a	jmp	@wait4key
+			sub	key,#"0" wz
+			shl	val,#1
+			setbnz	val,#0
+			jmp	@wait4key
+
+'*******************************************************************************************
+wipe_trace		reps	#256,#1
+			setptry	#0
+			wraux	#0,ptry++
+
+			push	_done
+			calla	@show_msg
+			jmp	@prompt
+'*******************************************************************************************
+left_align		cmp	cmd,#dreg wz,wc
+		if_ne	jmp	@la2
+			encod	ax,d_reg wz
+		if_z	jmp	@la3
+			subr	ax,#32
+			shl	d_reg,ax
+
+la2			cmp	cmd,#sreg wz,wc
+		if_ne	jmp	@la3
+			encod	ax,s_reg wz
+		if_z	jmp	@la3
+			subr	ax,#32
+			shl	s_reg,ax
+
+la3			calla	@refresh
+			jmp	@prompt
+'*******************************************************************************************
+right_align		cmp	cmd,#dreg wz,wc
+		if_ne	jmp	@ra2
+			jz	d_reg,@ra3
+ra1			testb	d_reg,#0 wz
+		if_nz	jmp	@ra3
+			shr	d_reg,#1
+			jmp	@ra1
+
+ra2			cmp	cmd,#sreg wz,wc
+		if_ne	jmp	@ra3
+			jz	s_reg,@ra3
+ra1b			testb	s_reg,#0 wz
+		if_nz	jmp	@ra3
+			shr	s_reg,#1
+			jmp	@ra1b
+
+ra3			calla	@refresh
+			jmp	@prompt
+'*******************************************************************************************
+
+left_shift		mins	val,#1
+
+			cmp	cmd,#dreg wz,wc
+		if_e	shl	d_reg,val
+
+			cmp	cmd,#sreg wz,wc
+		if_e	shl	s_reg,val
+
+			calla	@refresh
+			jmp	@prompt
+'*******************************************************************************************
+right_shift		mins	val,#1
+
+			cmp	cmd,#dreg wz,wc
+		if_e	shr	d_reg,val
+
+			cmp	cmd,#sreg wz,wc
+		if_e	shr	s_reg,val
+
+			calla	@refresh
+			jmp	@prompt
+'*******************************************************************************************
+
+inc			serouta	#13
+			mins	val,#1
+
+			cmp	cmd,#dreg wz,wc
+		if_e	add	d_reg,val
+		if_e	calla	@refresh
+
+			cmp	cmd,#sreg wz,wc
+		if_e	add	s_reg,val
+		if_e	calla	@refresh
+
+			cmp	cmd,#zflag wz,wc
+		if_e	setb	zc_flags,#z_flag
+		if_e	calla	@refresh
+
+			cmp	cmd,#cflag wz,wc
+		if_e	setb	zc_flags,#c_flag
+		if_e	calla	@refresh
+
+			cmp	cmd,#imed wz,wc
+		if_e	setb	test_instruction,#22
+		if_e	calla	@refresh
+
+			cmp	cmd,#logger wz,wc
+		if_e	mov	log,#1
+		if_e	calla	@refresh
+
+			cmp	cmd,#dumpmode wz,wc
+		if_e	incmod	dump_mode,#3
+		if_e	calla	@refresh
+
+			jmp	@prompt
+'*******************************************************************************************
+
+dec			serouta	#13
+			mins	val,#1
+
+			cmp	cmd,#dreg wz,wc
+		if_e	sub	d_reg,val
+		if_e	calla	@refresh
+
+			cmp	cmd,#sreg wz,wc
+		if_e	sub	s_reg,val
+		if_e	calla	@refresh
+
+			cmp	cmd,#zflag wz,wc
+		if_e	clrb	zc_flags,#z_flag
+		if_e	calla	@refresh
+
+			cmp	cmd,#cflag wz,wc
+		if_e	clrb	zc_flags,#c_flag
+		if_e	calla	@refresh
+
+			cmp	cmd,#imed wz,wc
+		if_e	clrb	test_instruction,#22
+		if_e	sets	test_instruction,#s_reg
+		if_e	calla	@refresh
+
+			cmp	cmd,#logger wz,wc
+		if_e	mov	log,#0
+		if_e	calla	@refresh
+
+			cmp	cmd,#dumpmode wz,wc
+		if_e	decmod	dump_mode,#3
+		if_e	calla	@refresh
+
+			jmp	@prompt
+
+'*******************************************************************************************
+
+load			cmp	key,#13 wz,wc
+		if_ne	serouta	#13
+
+			cmp	cmd,#dreg wz,wc
+		if_e	mov	d_reg,val
+		if_e	calla	@refresh
+
+			cmp	cmd,#sreg wz,wc
+		if_e	mov	s_reg,val
+		if_e	calla	@refresh
+
+			cmp	cmd,#imed wz,wc
+		if_e	setb	test_instruction,#22
+		if_e	sets	test_instruction,val
+		if_e	calla	@refresh
+
+			cmp	cmd,#exec wz,wc
+		if_e	calla	@execute
+
+			cmp	cmd,#logger wz,wc
+		if_e	mov	log_index,#0
+		if_e	calla	@refresh
+
+			cmp	cmd,#cogram wz,wc
+		if_e	jmp	@show_cogram
+			
+			cmp	cmd,#hubram wz,wc
+		if_e	jmp	@show_hubram
+			
+			cmp	cmd,#dumpmode wz,wc
+		if_ne	jmp	@prompt
+			cmp	val,#3 wz,wc
+		if_a	jmp	@prompt
+			mov	dump_mode,val
+			calla	@refresh
+			jmp	@prompt
+
+'*******************************************************************************************
+update_dump_mode	cmp	dump_mode,#0 wz,wc
+		if_e	push	_byte
+			cmp	dump_mode,#1 wz,wc
+		if_e	push	_word
+
+			cmp	dump_mode,#2 wz,wc
+		if_e	push	_long
+
+			cmp	dump_mode,#3 wz,wc
+		if_e	push	_text
+
+			calla	@show_msg
+			reta
+
+'*******************************************************************************************
+
+view_log		serouta	#13
+
+			jz	log_index,@@prompt
+
+			mov	repeats,log_index
+			mov	dx,_d_buffer
+
+:loop			push	_pass
+			calla	@show_msg
+
+			rdlong	ex,dx
+
+			mov	ax,ex
+			shr	ax,#16
+			cmp	ax,#10 wz,wc
+		if_b	serouta	#" "
+			push	ax
+			calla	@show_decimal
+			serouta	#" "
+			serouta	#" "
+
+			serouta	#"Z"
+			serouta	#"C"
+			serouta	#"="
+
+			push	ex
+			mov	bin_digits,#2
+			calla	@show_binary
+			add	dx,#4
+
+			serouta	#" "
+			serouta	#" "
+			serouta	#"$"
+			rdlong	ex,dx
+			push	ex
+			mov	hex_digits,#8
+			mov	hex_style,#1
+			calla	@show_hex
+			serouta	#" "
+			serouta	#" "
+
+			serouta	#"%"
+			push	ex
+			mov	bin_digits,#32
+			mov	bin_style,#2
+			calla	@show_binary
+
+			serouta	#" "
+			serouta	#" "
+			push	ex
+			calla	@show_decimal
+		
+			
+			serouta	#13
+			add	dx,#4
+			djnz	repeats,@:loop
+
+			jmp	@prompt
+
+
+'*******************************************************************************************
+
+update_inst		push	_inst
+			calla	@show_msg
+			serouta	#"%"
+			push	test_instruction
+			mov	bin_style,#3
+			mov	bin_digits,#32
+			calla	@show_binary
+
+			mov	hex_style,#0
+			serouta	#" "
+			serouta	#"$"
+			mov	ax,test_instruction
+			shr	ax,#9
+			and	ax,#$1ff
+			push	ax
+			mov	hex_digits,#3
+			calla	@show_hex
+	
+			serouta	#","
+			testb	test_instruction,#22 wz
+		if_nz	serouta	#"#"
+			serouta	#"$"
+			mov	ax,test_instruction
+			and	ax,#$1ff
+			push	ax
+			mov	hex_digits,#3
+			calla	@show_hex
+
+			serouta	#" "
+			mov	ax,test_instruction
+			shr	ax,#9
+			and	ax,#$1ff
+			push	ax
+			calla	@show_decimal
+
+			serouta	#","
+			testb	test_instruction,#22 wz
+		if_nz	serouta	#"#"
+			mov	ax,test_instruction
+			and	ax,#$1ff
+			push	ax
+			calla	@show_decimal
+
+			serouta	#13
+			reta
+
+'*******************************************************************************************
+
+
+before			mov	pass,#0
+			serouta	#13
+			push	_title
+			calla	@show_msg
+			push	_before
+			jmp	#bf2
+
+after			add	pass,#1
+refresh			push	_after
+
+bf2			serouta	#13
+			calla	@show_msg
+			push	_pass
+			calla	@show_msg
+			push	pass
+			calla	@show_decimal
+
+
+			push	_log
+			calla	@show_msg
+			cmp	log,#1 wz,wc
+		if_e	push	_on
+		if_ne	push	_off
+			calla	@show_msg
+
+			serouta	#"="
+			push	log_index
+			calla	@show_decimal
+
+			serouta	#" "
+			push	_dump
+			calla	@show_msg
+			calla	@update_dump_mode
+
+			calla	@update_inst
+			calla	@show_flags
+
+			serouta	#"D"
+			serouta	#"="
+			push	d_reg
+			calla	@show_reg
+
+			serouta	#"S"
+			serouta	#"="
+			push	s_reg
+			calla	@show_reg
+			serouta	#13
+
+			reta	wz,wc
+
+'*******************************************************************************************
+
+show_reg		pop	qreg
+			serouta	#"$"
+			mov	hex_style,#1
+			push	qreg
+			mov	hex_digits,#8
+			calla	@show_hex
+			serouta	#" "
+			serouta	#" "
+			serouta	#"%"
+			mov	bin_style,#2
+			push	qreg
+			mov	bin_digits,#32
+			calla	@show_binary
+			serouta	#" "
+			serouta	#" "
+			push	qreg
+			calla	@show_decimal
+			testb	qreg,#31 wz
+		if_z	serouta	#13
+		if_z	reta
+			serouta	#" "
+			serouta	#" "
+			neg	ax,qreg
+			push	ax
+			serouta	#"-"
+			calla	@show_decimal
+			serouta	#13
+			reta
+
+'*******************************************************************************************
+
+show_flags		push	_flags
+			calla	@show_msg
+			serouta	#"Z"
+			serouta	#"="
+			testb	zc_flags,#z_flag wz
+		if_z	serouta	#"0"
+		if_nz	serouta	#"1"
+			serouta	#" "
+			serouta	#"C"
+			serouta	#"="
+			testb	zc_flags,#c_flag wz
+		if_z	serouta	#"0"
+		if_nz	serouta	#"1"
+			serouta	#13
+			reta
+'*******************************************************************************************
+
+execute			getptrb	ptrb2
+			
+			mov	repeats,val
+			mins	repeats,#1
+			maxs	repeats,#100
+
+:loop			popzc	zc_flags
+			getptra	ptra2
+			call	#test_instruction
+			setptra	ptra2
+			pushzc	zc_flags
+
+			jz	log,@:loop2
+			locptrb	@d_buffer
+			mov	ax,log_index
+			shl	ax,#3
+			addptrb	ax
+			mov	ax,pass
+			add	ax,#1
+			shl	ax,#16
+			or	ax,zc_flags
+			wrlong	ax,ptrb[0]
+			wrlong	d_reg,ptrb[1]
+			incmod	log_index,#100 wc
+		if_c	mov	log,#0
+		
+:loop2			calla	@after
+			djnz	repeats,@:loop
+
+			setptrb	ptrb2
+
+			reta	wz,wc
+
+'*******************************************************************************************
+
+clear			mov	val,#0
+			mov	val2,#0
+			jmp	@wait4key
+
+'*******************************************************************************************
+
+ucase			cmp	key,#"a" wz,wc
+		if_b	reta
+			cmp	key,#"z" wz,wc
+		if_a	reta
+			sub	key,#32
+			reta
+
+'*******************************************************************************************
+
+show_hex		getptrb	ptrb2
+
+			mov	cx,_hex_formats
+			mov	bx,hex_style
+			shl	bx,#2
+			add	cx,bx
+			rdlong	bx,cx
+			setptrb	bx
+
+			jnz	hex_digits,@:setup
+			mov	hex_digits,#8
+
+:setup			mov	bx,hex_digits
+			shl	bx,#2
+			subr	bx,#32
+
+			cmp	hex_digits,#8 wz,wc
+		if_ne	push	hex_digits
+		if_ne	calla	@set_start
+
+			pop	ax
+			shl	ax,bx
+
+:loop			rdbyte	bx,ptrb++ wz
+		if_z	setptrb	ptrb2
+		if_z	reta
+			cmp	bx,#"d" wz,wc
+		if_e	jmp	@:loop2
+			serouta	bx
+			jmp	@:loop
+
+:loop2			getnib	bx,ax,#7
+			cmp	bx,#9 wz,wc
+		if_be	add	bx,#"0"
+		if_a	add	bx,#"A"-10
+			serouta	bx
+			shl	ax,#4
+			jmp	@:loop
+
+'*******************************************************************************************
+set_start		pop	cx
+
+:findz			rdbyte	ax,ptrb++ wz
+		if_nz	jmp	@:findz		'find 0 terminator
+			subptrb	#2
+
+:loop			rdbyte	ax,ptrb-- wz
+		if_z	addptrb	#1
+		if_z	reta
+			cmp	ax,#"d" wz,wc
+		if_ne	jmp	@:loop
+			djnz	cx,@:loop
+			addptrb	#1
+			reta
+'*******************************************************************************************
+
+show_binary		getptrb	ptrb2
+
+			mov	cx,_bin_formats
+			mov	bx,bin_style
+			shl	bx,#2
+			add	cx,bx
+			rdlong	bx,cx
+			setptrb	bx
+
+			jnz	bin_digits,@:setup
+			mov	bin_digits,#32
+
+:setup			mov	bx,bin_digits
+			subr	bx,#32
+
+			cmp	bin_digits,#32 wz,wc
+		if_ne	push	bin_digits
+		if_ne	calla	@set_start
+
+			pop	ax
+			shl	ax,bx
+
+
+:loop			rdbyte	bx,ptrb++ wz
+		if_z	setptrb	ptrb2
+		if_z	reta
+			cmp	bx,#"d" wz,wc
+		if_e	jmp	@:loop2
+			serouta	bx
+			jmp	@:loop
+
+:loop2			testb	ax,#31 wz
+		if_z	serouta	#"0"
+		if_nz	serouta	#"1"
+			shl	ax,#1
+			jmp	@:loop
+'*******************************************************************************************
+
+show_decimal		mov	res1,#0
+			mov	res0,#0
+			pop	ax
+			mov	cx,#32
+:loop			shl	ax,#1 wc
+			binbcd	res0 wc
+			binbcd	res1
+			djnz	cx,@:loop
+
+			push	res0
+			push	res1
+			or	res1,#0 wz
+		if_z	pop	res1
+		if_nz	calla	@trimmed_hex
+			calla	@trimmed_hex
+			reta
+
+'*******************************************************************************************
+			
+trimmed_hex		pop	ax
+			encod	bx,ax wz		'get magnitude
+		if_z	serouta	#"0"
+		if_z	reta
+			sub	bx,#1
+			shr	bx,#2
+			add	bx,#1			'digits
+			mov	cx,bx
+			shl	cx,#2
+			subr	cx,#32			'shift
+			shl	ax,cx		
+:loop			getnib	tmp,ax,#7
+			cmp	tmp,#9 wz,wc
+		if_be	add	tmp,#"0"
+		if_a	add	tmp,#"A"-10
+			serouta	tmp
+			shl	ax,#4
+			djnz	bx,@:loop
+			reta
+
+'*******************************************************************************************
+
+show_msg		getptrb	ptrb2
+			pop	ax
+			setptrb	ax
+:loop			rdbyte	bx,ptrb++ wz
+		if_z	setptrb	ptrb2
+		if_z	reta
+			serouta	bx
+			jmp	@:loop
+
+'*******************************************************************************************
+show_help		push	_help
+			calla	@show_msg
+			jmp	@prompt
+
+'*******************************************************************************************
+show_trace		mov	record,#0
+			serouta	#13
+			mov	bin_digits,#16
+			mov	bin_style,#4
+			getptry	val
+			mov	repeats,val wz
+	if_z		mov	repeats,#256
+			setptry	#0
+
+:loop			rdaux	ex,ptry++
+			push	ex
+			calla	@show_trace_line
+
+			shr	ex,#16
+			push	ex
+			calla	@show_trace_line
+
+			calla	@esc_check
+		if_e	jmp	@:exit
+
+			djnz	repeats,@:loop
+
+:exit			setptry	val
+			jmp	@prompt
+
+'*******************************************************************************************
+
+show_trace_line		pop	cmd
+
+			add	record,#1
+			serouta	#"R"
+			push	record
+			calla	@show_decimal
+			cmp	record,#10 wz,wc
+		if_b	serouta	#" "
+			cmp	record,#100 wz,wc
+		if_b	serouta	#" "
+
+			serouta	#" "
+
+			push	_task
+			calla	@show_msg
+			mov	task,cmd
+			shr	task,#14
+			and	task,#3
+			mov	ax,task
+			add	ax,#"0"
+			serouta	ax
+			serouta	#" "
+
+			testb	cmd,#13 wz
+		if_z	push	_dash3
+		if_nz	push	_hub
+			calla	@show_msg
+
+			testb	cmd,#12 wz
+		if_z	push	_dash5
+		if_nz	push	_fetch
+			calla	@show_msg
+
+			testb	cmd,#11 wz
+		if_nz	push	_dash5
+		if_z	push	_stall
+			calla	@show_msg
+
+			testb	cmd,#10 wz
+		if_nz	push	_dash4
+		if_z	push	_skip
+			calla	@show_msg
+
+			testb	cmd,#9 wz
+		if_z	push	_dash4
+		if_nz	push	_jump
+			calla	@show_msg
+
+			serouta	#" "
+			serouta	#"|"
+			serouta	#" "
+
+			jz	task,@show_task_pc
+			mov	dx,task
+:loop			push	_dash4
+			calla	@show_msg
+			djnz	dx,@:loop
+
+show_task_pc		serouta	#"$"
+			mov	ax,cmd
+			and	ax,#$1ff
+			push	ax
+			mov	hex_digits,#3
+			calla	@show_hex
+			serouta	#" "
+
+			cmp	task,#3 wz,wc
+		if_e	jmp	@no_dash
+			subr	task,#3
+			
+:loop2			push	_dash4
+			calla	@show_msg
+			djnz	task,@:loop2
+
+
+no_dash			serouta	#13
+			
+			reta
+
+'*******************************************************************************************
+show_cogram		serouta	#13
+
+			sub	val,val2
+			add	val,#1
+
+:loop			push	_cogram
+			calla	@show_msg
+
+			serouta	#"$"
+			push	val2
+			mov	hex_digits,#3
+			calla	@show_hex
+			serouta	#":"
+			serouta	#"="
+			serouta	#" "
+
+			calla	#read_cogram
+			serouta	#"$"
+			mov	hex_digits,#8
+			calla	@show_hex
+			serouta	#" "
+
+			serouta	#"%"
+			calla	#read_cogram
+			mov	bin_style,#3
+			mov	bin_digits,#32
+			calla	@show_binary
+			serouta	#" "
+
+			calla	#read_cogram
+			calla	@show_decimal
+
+			add	val2,#1
+
+			serouta	#13
+			djnz	val,@:loop			
+
+			jmp	@prompt
+
+'*******************************************************************************************
+esc_check		serina	ax wc
+		if_c	reta
+			cmp	ax,#27 wz,wc
+			reta
+'*******************************************************************************************
+show_hubram		mov	cmd,#0
+
+			jmplist	dump_mode,@dlist
+dlist			jmp	@byte_dump
+			jmp	@word_dump
+			jmp	@long_dump
+			jmp	@text_dump
+
+'*******************************************************************************************
+
+byte_dump		and	val2,##$ffff0
+
+			sub	val,val2
+			add	val,#1
+			
+:loop			test	val2,#$f wz
+		if_nz	jmp	@:loop2
+
+			calla	@esc_check
+		if_e	jmp	@:exit
+
+			push	val2
+			mov	hex_digits,#5
+			mov	hex_style,#0
+			calla	@show_hex
+			serouta	#":"
+			serouta	#" "
+
+:loop2			rdbyte	ax,val2
+			add	val2,#1
+			push	ax
+			mov	hex_digits,#2
+			calla	@show_hex
+			serouta	#" "
+			incmod	cmd,#15 wz,wc
+		if_c	serouta	#13
+
+			djnz	val,@:loop
+:exit			serouta	#13
+	
+			jmp	@prompt
+'*******************************************************************************************
+
+word_dump		and	val2,##$ffff8
+
+			sub	val,val2
+			add	val,#1
+			shr	val,#1
+			
+:loop			test	val2,#$f wz
+		if_nz	jmp	@:loop2
+
+			calla	@esc_check
+		if_e	jmp	@:exit
+
+			push	val2
+			mov	hex_digits,#5
+			mov	hex_style,#0
+			calla	@show_hex
+			serouta	#":"
+			serouta	#" "
+
+:loop2			rdword	ax,val2
+			add	val2,#2
+			push	ax
+			mov	hex_digits,#4
+			calla	@show_hex
+			serouta	#" "
+			serouta	#" "
+			incmod	cmd,#7 wz,wc
+		if_c	serouta	#13
+
+			djnz	val,@:loop
+
+:exit			serouta	#13
+	
+			jmp	@prompt
+'*******************************************************************************************
+
+long_dump		and	val2,##$ffffc
+
+			sub	val,val2
+			add	val,#1
+			shr	val,#2
+			
+:loop			test	val2,#$f wz
+		if_nz	jmp	@:loop2
+
+			calla	@esc_check
+		if_e	jmp	@:exit
+
+			push	val2
+			mov	hex_digits,#5
+			mov	hex_style,#0
+			calla	@show_hex
+			serouta	#":"
+			serouta	#" "
+
+:loop2			rdlong	ax,val2
+			add	val2,#4
+			push	ax
+			mov	hex_digits,#8
+			mov	hex_style,#1
+			calla	@show_hex
+			serouta	#" "
+			serouta	#" "
+			incmod	cmd,#3 wz,wc
+		if_c	serouta	#13
+
+			djnz	val,@:loop
+
+:exit			serouta	#13
+	
+			jmp	@prompt
+'*******************************************************************************************
+text_dump		and	val2,##$ffff0
+
+			sub	val,val2
+			add	val,#1
+
+:loop			test	val2,#$1f wz
+		if_nz	jmp	@:loop2
+
+			calla	@esc_check
+		if_e	jmp	@:exit
+
+			push	val2
+			mov	hex_digits,#5
+			mov	hex_style,#0
+			calla	@show_hex
+			serouta	#":"
+			serouta	#" "
+
+:loop2			rdbyte	ax,val2
+			add	val2,#1
+
+			cmp	ax,#32 wz,wc
+		if_b	mov	ax,#"."
+			cmp	ax,#127 wz,wc
+		if_a	mov	ax,#"."
+			serouta	ax
+	
+			incmod	cmd,#31 wz,wc
+		if_c	serouta	#13
+
+			djnz	val,@:loop
+:exit			serouta	#13
+
+			jmp	@prompt
+'*******************************************************************************************
+
+_title_			byte	"P2 Test Toolbox V1.5",13,0
+_before_		byte	"Before:  ",0
+_after_			byte	"After:   ",0
+_inst_			byte	"Instruction: ",0
+_flags_			byte	"Flags: ",0
+_pass_			byte	"Pass #",0
+_log_			byte	"  Log: ",0
+_off_			byte	"OFF",0
+_on_			byte	"ON",0
+_cogram_		byte	"Cog Ram ",0
+
+_task_			byte	"TASK",0
+_hub_			byte	"HUB ",0
+_fetch_			byte	"FETCH ",0
+_go_			byte	"GO ",0
+_stall_			byte	"STALL ",0
+_cond_			byte	"COND ",0
+_skip_			byte	"SKIP ",0
+_jump_			byte	"JUMP ",0
+_dash2_			byte	"-- ",0
+_dash3_			byte	"--- ",0
+_dash4_			byte	"---- ",0
+_dash5_			byte	"----- ",0
+_done_			byte	13,"Done.",13,0
+
+_byte_			byte	"BYTE",13,0
+_word_			byte	"WORD",13,0
+_long_			byte	"LONG",13,0
+_text_			byte	"TEXT",13,0
+
+_dump_			byte	"Dump:",0
+
+bin_formats		long	@bin_format0 
+			long	@bin_format1 
+			long	@bin_format2 
+			long	@bin_format3 
+			long	@bin_format4 
+
+hex_formats		long	@hex_format0 
+			long	@hex_format1 
+			long	@hex_format2 
+
+bin_format0		byte	"dddddddddddddddddddddddddddddddd",0
+bin_format1		byte	"dddddddd_dddddddd_dddddddd_dddddddd",0
+bin_format2		byte	"dddd_dddd_dddd_dddd_dddd_dddd_dddd_dddd",0
+bin_format3		byte	"ddddddd_dd_d_dddd_ddddddddd_ddddddddd",0
+bin_format4		byte	"dd_d_d_d_d_d_ddddddddd",0
+
+hex_format0		byte	"dddddddd",0
+hex_format1		byte	"dddd_dddd",0
+hex_format2		byte	"dd_dd_dd_dd",0
+
+help			byte	13
+			byte	"P2 Test Toolbox commands",13,13
+			byte	"0..9         Decimal digits",13
+			byte	"A..F         Hex digits",13
+			byte	"$            Hex entry mode",13
+			byte	"%            Binary entry mode",13
+			byte	"= or ENTER   Load register",13
+			byte	"+            Increment/Add to register",13
+			byte	"-            Decrement/Sub from  register",13
+			byte	"<            Left shift register",13
+			byte	">            Right shift register",13
+			byte	"[            Left align register",13
+			byte	"]            Right align register",13
+			byte	"Z            ZERO flag",13
+			byte	"Y            CARRY flag",13
+			byte	"T            DEST register",13
+			byte	"S            SOURCE register",13
+			byte	"I            IMMEDIATE",13
+			byte	"N            Show Before Header, zeroes pass counter",13
+			byte	"X            Execute instruction",13
+			byte	"O            Execute once with before/after headers",13
+			byte	"R            Refresh",13
+			byte	"L            Logger",13
+			byte	"V            View logger results",13
+			byte	"W            Vuew trace results",13
+			byte	"P            Wipe trace results",13
+			byte	"G            Dump COG ram",13
+			byte	"H            Dump HUB ram",13
+			byte	"J            Change Hub dump mode",13
+			byte	0
+
+mystack			long	0[16]
+
+d_buffer		long	0[128]
